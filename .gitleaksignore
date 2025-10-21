@@ -1,0 +1,5 @@
+# Ignore gitleaks detections for this project
+
+# Ignore the curl command example in PreferencesView.swift
+# This is just a template/example, not a real API key
+afmd/Views/PreferencesView.swift:curl-auth-header:386

@@ -44,7 +44,7 @@ struct PreferencesView: View {
                 case .examples:
                     ExamplesView(viewModel: viewModel)
                 case .recent:
-                    RecentChatView(viewModel: viewModel)
+                    RealTimeLogView(viewModel: viewModel)
                 }
             }
             .navigationTitle(selectedTab.rawValue)
@@ -409,64 +409,234 @@ curl -X POST "\(baseURL)" \\
     }
 }
 
-// MARK: - Recent Chat View
-struct RecentChatView: View {
+// MARK: - Real-Time Log View
+struct RealTimeLogView: View {
     @ObservedObject var viewModel: ServerViewModel
+    @State private var selectedLevel: ServerViewModel.LogLevel? = nil
+    @State private var selectedCategory: ServerViewModel.LogCategory? = nil
+    @State private var isAutoScrollEnabled = true
+    
+    private var filteredLogs: [ServerViewModel.LogEntry] {
+        var logs = viewModel.serverLogs
+        
+        if let level = selectedLevel {
+            logs = logs.filter { $0.level == level }
+        }
+        
+        if let category = selectedCategory {
+            logs = logs.filter { $0.category == category }
+        }
+        
+        return logs.reversed() // Show newest first
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            // Controls
             HStack {
-                Text("Recent Conversations")
+                Text("Server Logs")
                     .font(.headline)
+                
                 Spacer()
-                Button("Clear All") {
-                    viewModel.clearChatHistory()
+                
+                // Logging toggle
+                Toggle("Logging", isOn: $viewModel.isLoggingEnabled)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .onChange(of: viewModel.isLoggingEnabled) { _, newValue in
+                        viewModel.toggleLogging()
+                    }
+                
+                // Level filter
+                Menu {
+                    Button("All Levels") {
+                        selectedLevel = nil
+                    }
+                    ForEach(ServerViewModel.LogLevel.allCases, id: \.self) { level in
+                        Button(level.rawValue) {
+                            selectedLevel = level
+                        }
+                    }
+                } label: {
+                    Label(selectedLevel?.rawValue ?? "All Levels", systemImage: "line.3.horizontal.decrease.circle")
+                }
+                .controlSize(.small)
+                
+                // Category filter
+                Menu {
+                    Button("All Categories") {
+                        selectedCategory = nil
+                    }
+                    ForEach(ServerViewModel.LogCategory.allCases, id: \.self) { category in
+                        Button(category.rawValue) {
+                            selectedCategory = category
+                        }
+                    }
+                } label: {
+                    Label(selectedCategory?.rawValue ?? "All Categories", systemImage: "tag")
+                }
+                .controlSize(.small)
+                
+                // Clear logs
+                Button("Clear") {
+                    viewModel.clearLogs()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                
+                // Export logs
+                Button("Export") {
+                    let logsText = viewModel.exportLogs()
+                    viewModel.copyToClipboard(logsText)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
             
-            if viewModel.chatHistory.isEmpty {
+            // Logs display
+            if filteredLogs.isEmpty {
                 VStack(spacing: 12) {
-                    Image(systemName: "bubble.left.and.bubble.right")
+                    Image(systemName: "doc.text")
                         .font(.system(size: 48))
                         .foregroundStyle(.secondary)
-                    Text("No recent conversations")
+                    Text("No logs available")
                         .font(.title3)
                         .foregroundStyle(.secondary)
-                    Text("Start a conversation to see your chat history here")
+                    Text("Server logs will appear here when the server is running")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(viewModel.chatHistory.reversed()) { chat in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text(chat.timestamp, style: .relative)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(chat.model)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Text(chat.prompt)
-                            .font(.body)
-                            .lineLimit(2)
-                        
-                        Text(chat.response)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(3)
+                ScrollViewReader { proxy in
+                    List(filteredLogs) { log in
+                        LogRowView(log: log)
+                            .id(log.id)
+                            .onAppear {
+                                if isAutoScrollEnabled && log.id == filteredLogs.first?.id {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        proxy.scrollTo(log.id, anchor: .top)
+                                    }
+                                }
+                            }
                     }
-                    .padding(.vertical, 4)
+                    .listStyle(.plain)
+                    .onChange(of: viewModel.serverLogs.count) { _, _ in
+                        if isAutoScrollEnabled, let lastLog = filteredLogs.first {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo(lastLog.id, anchor: .top)
+                            }
+                        }
+                    }
                 }
-                .listStyle(.plain)
             }
         }
         .padding()
+    }
+}
+
+// MARK: - Log Row View
+struct LogRowView: View {
+    let log: ServerViewModel.LogEntry
+    
+    private var isRequestContent: Bool {
+        log.category == .request && log.message.contains("Request content")
+    }
+    
+    private var isResponseContent: Bool {
+        log.category == .response && log.message.contains("Response content")
+    }
+    
+    private var hasStatusCode: Bool {
+        log.details?.contains("Status:") == true
+    }
+    
+    private var statusCode: String? {
+        guard hasStatusCode else { return nil }
+        return log.details?.components(separatedBy: "Status: ").last?.components(separatedBy: ",").first
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                // Level icon and text
+                Label(log.level.rawValue, systemImage: log.level.icon)
+                    .font(.caption)
+                    .foregroundStyle(log.level.color == "red" ? .red : 
+                                   log.level.color == "orange" ? .orange :
+                                   log.level.color == "secondary" ? .secondary : .primary)
+                
+                // Category
+                Label(log.category.rawValue, systemImage: log.category.icon)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                // Status code badge (if available)
+                if let statusCode = statusCode {
+                    Text(statusCode)
+                        .font(.caption)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(statusCodeColor(for: statusCode))
+                        .foregroundColor(.white)
+                        .cornerRadius(4)
+                }
+                
+                Spacer()
+                
+                // Timestamp
+                Text(log.timestamp, style: .time)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            // Message
+            Text(log.message)
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(.primary)
+            
+            // Details (if available)
+            if let details = log.details {
+                if isRequestContent || isResponseContent {
+                    // Special formatting for request/response content
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Content:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fontWeight(.medium)
+                        
+                        Text(details)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.primary)
+                            .padding(8)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(6)
+                            .lineLimit(nil)
+                    }
+                    .padding(.leading, 8)
+                } else {
+                    // Regular details formatting
+                    Text(details)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 8)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+    
+    private func statusCodeColor(for statusCode: String) -> Color {
+        switch statusCode {
+        case "200", "201", "202":
+            return .green
+        case "400", "401", "403", "404":
+            return .orange
+        case "500", "502", "503":
+            return .red
+        default:
+            return .gray
+        }
     }
 }
 

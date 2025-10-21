@@ -36,6 +36,8 @@ final class ServerViewModel: ObservableObject {
     @Published var isAutoStartEnabled: Bool = false
     @Published var isDaemonMode: Bool = false
     @Published var chatHistory: [ChatHistory] = []
+    @Published var serverLogs: [LogEntry] = []
+    @Published var isLoggingEnabled: Bool = true
     
     struct ChatHistory: Identifiable, Codable {
         let id = UUID()
@@ -49,6 +51,68 @@ final class ServerViewModel: ObservableObject {
             self.prompt = prompt
             self.response = response
             self.model = model
+        }
+    }
+    
+    struct LogEntry: Identifiable, Codable {
+        let id = UUID()
+        let timestamp: Date
+        let level: LogLevel
+        let category: LogCategory
+        let message: String
+        let details: String?
+        
+        init(timestamp: Date = Date(), level: LogLevel, category: LogCategory, message: String, details: String? = nil) {
+            self.timestamp = timestamp
+            self.level = level
+            self.category = category
+            self.message = message
+            self.details = details
+        }
+    }
+    
+    enum LogLevel: String, CaseIterable, Codable {
+        case debug = "DEBUG"
+        case info = "INFO"
+        case warning = "WARN"
+        case error = "ERROR"
+        
+        var color: String {
+            switch self {
+            case .debug: return "secondary"
+            case .info: return "primary"
+            case .warning: return "orange"
+            case .error: return "red"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .debug: return "ladybug"
+            case .info: return "info.circle"
+            case .warning: return "exclamationmark.triangle"
+            case .error: return "xmark.circle"
+            }
+        }
+    }
+    
+    enum LogCategory: String, CaseIterable, Codable {
+        case server = "Server"
+        case request = "Request"
+        case response = "Response"
+        case model = "Model"
+        case system = "System"
+        case network = "Network"
+        
+        var icon: String {
+            switch self {
+            case .server: return "server.rack"
+            case .request: return "arrow.down.circle"
+            case .response: return "arrow.up.circle"
+            case .model: return "brain"
+            case .system: return "gear"
+            case .network: return "network"
+            }
         }
     }
 
@@ -82,6 +146,12 @@ final class ServerViewModel: ObservableObject {
         // Load chat history
         loadChatHistory()
         
+        // Load server logs
+        loadLogs()
+        
+        // Set up server manager reference for logging
+        serverManager.setViewModel(self)
+        
         // Observe server manager state changes
         serverManager.$isRunning
             .receive(on: DispatchQueue.main)
@@ -104,7 +174,10 @@ final class ServerViewModel: ObservableObject {
 
     func startServer() async {
         await checkModelAvailability()
-        guard isModelAvailable else { return }
+        guard isModelAvailable else { 
+            addLog(level: .error, category: .server, message: "Cannot start server", details: "Model not available")
+            return 
+        }
         await serverManager.startServer(configuration: configuration)
     }
 
@@ -345,5 +418,65 @@ curl -X POST "\(targetURL)" \\
            let history = try? JSONDecoder().decode([ChatHistory].self, from: data) {
             chatHistory = history
         }
+    }
+    
+    // MARK: - Log Management
+    
+    func addLog(level: LogLevel, category: LogCategory, message: String, details: String? = nil) {
+        guard isLoggingEnabled else { return }
+        
+        let logEntry = LogEntry(
+            level: level,
+            category: category,
+            message: message,
+            details: details
+        )
+        
+        serverLogs.append(logEntry)
+        
+        // Keep only the last 1000 logs to prevent memory issues
+        if serverLogs.count > 1000 {
+            serverLogs.removeFirst(serverLogs.count - 1000)
+        }
+        
+        // Save logs to UserDefaults for persistence
+        saveLogs()
+    }
+    
+    func clearLogs() {
+        serverLogs.removeAll()
+        saveLogs()
+    }
+    
+    func toggleLogging() {
+        isLoggingEnabled.toggle()
+        UserDefaults.standard.set(isLoggingEnabled, forKey: "AFMD_LoggingEnabled")
+    }
+    
+    func exportLogs() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        
+        return serverLogs.map { log in
+            let timestamp = formatter.string(from: log.timestamp)
+            let details = log.details != nil ? " | \(log.details!)" : ""
+            return "[\(timestamp)] [\(log.level.rawValue)] [\(log.category.rawValue)] \(log.message)\(details)"
+        }.joined(separator: "\n")
+    }
+    
+    private func saveLogs() {
+        if let data = try? JSONEncoder().encode(serverLogs) {
+            UserDefaults.standard.set(data, forKey: "AFMD_ServerLogs")
+        }
+    }
+    
+    private func loadLogs() {
+        if let data = UserDefaults.standard.data(forKey: "AFMD_ServerLogs"),
+           let logs = try? JSONDecoder().decode([LogEntry].self, from: data) {
+            serverLogs = logs
+        }
+        
+        // Load logging preference
+        isLoggingEnabled = UserDefaults.standard.object(forKey: "AFMD_LoggingEnabled") as? Bool ?? true
     }
 }

@@ -17,9 +17,14 @@ class VaporServerManager: ObservableObject {
 
     private var app: Application?
     private var serverTask: Task<Void, Never>?
+    private weak var viewModel: ServerViewModel?
 
     private static let modelName = "AFM-on-device"
     private static var loggingBootstrapped = false
+    
+    func setViewModel(_ viewModel: ServerViewModel) {
+        self.viewModel = viewModel
+    }
 
     func startServer(configuration: ServerConfiguration) async {
         guard !isRunning else { return }
@@ -71,6 +76,7 @@ class VaporServerManager: ObservableObject {
 
     func stopServer() async {
         guard isRunning else { return }
+        
 
         // Cancel the server task
         serverTask?.cancel()
@@ -88,7 +94,8 @@ class VaporServerManager: ObservableObject {
     private func configureRoutes(_ app: Application) {
         // Health check endpoint
         app.get("health") { req async -> HTTPStatus in
-            return .ok
+            let status = HTTPStatus.ok
+            return status
         }
 
         // Model status endpoint
@@ -96,13 +103,16 @@ class VaporServerManager: ObservableObject {
             let (available, reason) = await aiManager.isModelAvailable()
             let supportedLanguages = await aiManager.getSupportedLanguages()
 
-            return ServerStatus(
+            let status = ServerStatus(
                 modelAvailable: available,
                 reason: reason ?? "Model is available",
                 supportedLanguages: supportedLanguages,
                 serverVersion: "1.0.0",
                 appleIntelligenceCompatible: true
             )
+            
+            self.viewModel?.addLog(level: .debug, category: .response, message: "Status response sent", details: "Model available: \(available), Status: 200")
+            return status
         }
 
         // OpenAI compatible endpoints
@@ -124,18 +134,35 @@ class VaporServerManager: ObservableObject {
                     ))
             }
 
-            return ModelsResponse(
+            let response = ModelsResponse(
                 object: "list",
                 data: models
             )
+            
+            self.viewModel?.addLog(level: .debug, category: .response, message: "", details: "Models count: \(models.count), Status: 200")
+            return response
         }
 
         // Chat completions endpoint (main endpoint)
         v1.post("chat", "completions") { req async throws -> Response in
             let chatRequest = try req.content.decode(ChatCompletionRequest.self)
+            
+            // Log request details
+            let messageCount = chatRequest.messages.count
+            let isStreaming = chatRequest.stream == true
+            let model = chatRequest.model ?? Self.modelName
+            
+            // Log request content
+            let requestContent = chatRequest.messages.map { msg in
+                "\(msg.role): \(msg.content)"
+            }.joined(separator: " | ")
+            
+            self.viewModel?.addLog(level: .debug, category: .request, message: "", details: "Messages: \(messageCount), Streaming: \(isStreaming), Model: \(model)")
+            self.viewModel?.addLog(level: .info, category: .request, message: "", details: requestContent)
 
             // Validate request
             guard !chatRequest.messages.isEmpty else {
+                self.viewModel?.addLog(level: .error, category: .request, message: "", details: "No messages provided")
                 throw Abort(.badRequest, reason: "No messages provided")
             }
 
@@ -174,10 +201,15 @@ class VaporServerManager: ObservableObject {
                 var res = Response()
                 res.headers.contentType = .json
                 res.body = .init(data: jsonData)
+                
+                self.viewModel?.addLog(level: .info, category: .response, message: "", details: "Response length: \(response.count) characters, Status: 200")
+                self.viewModel?.addLog(level: .info, category: .response, message: "", details: response)
                 return res
             } catch let error as AbortError {
+                self.viewModel?.addLog(level: .error, category: .response, message: "", details: "AbortError: \(error.reason), Status: \(error.status.code)")
                 throw error
             } catch {
+                self.viewModel?.addLog(level: .error, category: .response, message: "", details: "Error: \(error.localizedDescription), Status: 500")
                 throw Abort(
                     .internalServerError,
                     reason: "Error generating response: \(error.localizedDescription)")
@@ -200,10 +232,11 @@ class VaporServerManager: ObservableObject {
         response.body = Response.Body(stream: { writer in
             Task {
                 do {
+                    // This is already logged in the main endpoint, so we don't need to log it again here
                     // Check availability first
-                    print("DEBUG: Checking model availability")
                     let (available, reason) = await aiManager.isModelAvailable()
                     guard available else {
+                        self.viewModel?.addLog(level: .error, category: .model, message: "Model not available", details: reason)
                         let errorData = """
                             data: {"error": {"message": "\(reason ?? "Model not available")", "type": "unavailable_error"}}
 
@@ -220,7 +253,6 @@ class VaporServerManager: ObservableObject {
                     let currentPrompt = lastMessage.content
 
                     // Convert previous messages (excluding the last one) to transcript
-                    print("DEBUG: Converting messages to transcript")
                     let previousMessages =
                         chatRequest.messages.count > 1 ? Array(chatRequest.messages.dropLast()) : []
                     let transcriptEntries = await aiManager.convertMessagesToTranscript(
@@ -247,6 +279,7 @@ class VaporServerManager: ObservableObject {
 
                     // Get the streaming response from the session
                     print("DEBUG: Getting streaming response")
+                    self.viewModel?.addLog(level: .debug, category: .response, message: "Getting streaming response from model")
                     let responseStream = session.streamResponse(to: currentPrompt, options: options)
 
                     // Response metadata
@@ -328,12 +361,19 @@ class VaporServerManager: ObservableObject {
 
                     // Complete the stream
                     writer.write(.end)
+                    
+                    // Log streaming completion
+                    self.viewModel?.addLog(level: .info, category: .response, message: "", details: "Total content length: \(previousContent.count) characters, Status: 200")
+                    self.viewModel?.addLog(level: .info, category: .response, message: "", details: previousContent)
 
                 } catch {
                     // Print full error and stack trace to server output
                     print("Error in chat completion stream: \(error)")
                     print("Error details:")
                     dump(error)
+                    
+                    // Log streaming error
+                    self.viewModel?.addLog(level: .error, category: .response, message: "", details: "Error: \(error.localizedDescription), Status: 500")
 
                     // Handle errors by sending error message in SSE format
                     let errorData = """

@@ -187,7 +187,7 @@ curl -X POST "\(targetURL)" \\
     
     private func checkAutoStartStatus() {
         let launchAgentPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents/com.afmd.launchagent.plist")
+            .appendingPathComponent("Library/LaunchAgents/com.iqiancheng.afmd.launchagent.plist")
         isAutoStartEnabled = FileManager.default.fileExists(atPath: launchAgentPath.path)
         print("🔍 Auto-start status: \(isAutoStartEnabled ? "Enabled" : "Disabled")")
     }
@@ -206,7 +206,7 @@ curl -X POST "\(targetURL)" \\
     
     private func enableAutoStart() {
         let launchAgentPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents/com.afmd.launchagent.plist")
+            .appendingPathComponent("Library/LaunchAgents/com.iqiancheng.afmd.launchagent.plist")
         
         // Get the current app bundle path
         let appPath = Bundle.main.bundlePath
@@ -228,7 +228,7 @@ curl -X POST "\(targetURL)" \\
         <plist version="1.0">
         <dict>
             <key>Label</key>
-            <string>com.afmd.launchagent</string>
+            <string>com.iqiancheng.afmd.launchagent</string>
             <key>ProgramArguments</key>
             <array>
                 <string>\(appPath)/Contents/MacOS/afmd</string>
@@ -261,7 +261,7 @@ curl -X POST "\(targetURL)" \\
     
     private func disableAutoStart() {
         let launchAgentPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents/com.afmd.launchagent.plist")
+            .appendingPathComponent("Library/LaunchAgents/com.iqiancheng.afmd.launchagent.plist")
         
         do {
             if FileManager.default.fileExists(atPath: launchAgentPath.path) {
@@ -291,7 +291,7 @@ curl -X POST "\(targetURL)" \\
     
     func testLaunchAgent() {
         let launchAgentPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents/com.afmd.launchagent.plist")
+            .appendingPathComponent("Library/LaunchAgents/com.iqiancheng.afmd.launchagent.plist")
         
         if FileManager.default.fileExists(atPath: launchAgentPath.path) {
             lastError = "LaunchAgent file exists at: \(launchAgentPath.path)"

@@ -2,6 +2,7 @@
 
 A lightweight macOS menu bar service that exposes an OpenAI-compatible API using Apple's on-device Foundation Models. It runs headlessly (no Dock icon), controlled from the menu bar.
 
+![](assets/Screenshot_perferences_view.jpg)
 ## Usage
 
 1. Launch the app; look for the brain icon in the menu bar.

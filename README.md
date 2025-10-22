@@ -1,8 +1,8 @@
 # afmd — Apple Foundation Model Daemon Service
 
 A lightweight macOS menu bar service that exposes an OpenAI-compatible API using Apple's on-device Foundation Models. It runs headlessly (no Dock icon), controlled from the menu bar.
-
-![](assets/Screenshot_perferences_view.jpg)
+![menu bar icon](assets/Screenshot_menubar.jpg)
+![preferences view](assets/Screenshot_perferences_view.jpg)
 ## Usage
 
 1. Launch the app; look for the brain icon in the menu bar.
@@ -49,7 +49,7 @@ curl -X POST "http://127.0.0.1:11535/v1/chat/completions" \
 
 ### Acknowledgments
 
-- [OpenAI API](https://platform.openai.com/docs/api-reference)
-- [Apple Foundation Models](https://developer.apple.com/documentation/foundationmodels)
-- [AFM-on-device-openai](https://github.com/gety-ai/AFM-on-device-openai)
-- [maclocal-api](https://github.com/scouzi1966/maclocal-api)
+- [Apple Foundation Models](https://developer.apple.com/documentation/foundationmodels) Apple's on-device Foundation Models 
+- [AFM-on-device-openai](https://github.com/gety-ai/AFM-on-device-openai) a local API server for macOS 26.0 or later 
+- [maclocal-api](https://github.com/scouzi1966/maclocal-api) another local API server for macOS 26.0 or later 
+- [enableAppleAI](https://github.com/kanshurichard/enableAppleAI) Enable Apple Intelligence on your device 

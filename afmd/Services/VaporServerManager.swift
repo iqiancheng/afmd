@@ -202,8 +202,7 @@ class VaporServerManager: ObservableObject {
                 res.headers.contentType = .json
                 res.body = .init(data: jsonData)
                 
-                self.viewModel?.addLog(level: .info, category: .response, message: "", details: "Response length: \(response.count) characters, Status: 200")
-                self.viewModel?.addLog(level: .info, category: .response, message: "", details: response)
+                self.viewModel?.addLog(level: .info, category: .response, message: "", details: response + "\n\nlength: \(response.count) characters, Status: 200")
                 return res
             } catch let error as AbortError {
                 self.viewModel?.addLog(level: .error, category: .response, message: "", details: "AbortError: \(error.reason), Status: \(error.status.code)")

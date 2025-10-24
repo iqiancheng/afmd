@@ -107,8 +107,7 @@ struct StatusMenuView: View {
     @State private var isWorking: Bool = false
 
     private var readmeURL: URL? {
-        // Convert ssh remote to https: git@github.com:gety-ai/AFM-on-device-openai.git
-        URL(string: "https://github.com/gety-ai/AFM-on-device-openai#readme")
+        URL(string: "https://github.com/iqiancheng/afmd#readme")
     }
 
     var body: some View {

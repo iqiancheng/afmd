@@ -48,11 +48,13 @@ nonisolated struct MessageContent: Content, Sendable {
     let type: String
     let text: String?
     let imageUrl: ImageUrl?
+    let imageData: ImageData?
     
     enum CodingKeys: String, CodingKey {
         case type
         case text
         case imageUrl = "image_url"
+        case imageData = "image_data"
     }
 }
 
@@ -61,15 +63,29 @@ nonisolated struct ImageUrl: Content, Sendable {
     let detail: String?
 }
 
+nonisolated struct ImageData: Content, Sendable {
+    let data: String // Base64 encoded image data
+    let format: String // "jpeg", "png", etc.
+    let detail: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case data
+        case format
+        case detail
+    }
+}
+
 nonisolated struct ChatMessage: Content, Sendable {
     let role: String
     let content: String
     let name: String?
+    let multimodalContent: [MessageContent]?
 
-    init(role: String, content: String, name: String? = nil) {
+    init(role: String, content: String, name: String? = nil, multimodalContent: [MessageContent]? = nil) {
         self.role = role
         self.content = content
         self.name = name
+        self.multimodalContent = multimodalContent
     }
     
     // Custom decoder to handle both string and array content formats
@@ -82,12 +98,14 @@ nonisolated struct ChatMessage: Content, Sendable {
         // Try to decode content as string first
         if let stringContent = try? container.decode(String.self, forKey: .content) {
             self.content = stringContent
+            self.multimodalContent = nil
         } else if let arrayContent = try? container.decode([MessageContent].self, forKey: .content) {
             // Extract text from structured content array
             let textParts = arrayContent.compactMap { contentItem in
                 contentItem.type == "text" ? contentItem.text : nil
             }
             self.content = textParts.joined(separator: " ")
+            self.multimodalContent = arrayContent
         } else {
             throw DecodingError.typeMismatch(
                 String.self,
@@ -99,12 +117,17 @@ nonisolated struct ChatMessage: Content, Sendable {
         }
     }
     
-    // Custom encoder to always encode as string
+    // Custom encoder to handle both string and multimodal content
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(role, forKey: .role)
-        try container.encode(content, forKey: .content)
         try container.encodeIfPresent(name, forKey: .name)
+        
+        if let multimodalContent = multimodalContent {
+            try container.encode(multimodalContent, forKey: .content)
+        } else {
+            try container.encode(content, forKey: .content)
+        }
     }
     
     enum CodingKeys: String, CodingKey {
@@ -255,4 +278,95 @@ nonisolated struct ChatCompletionDelta: Content, Sendable {
         self.role = role
         self.content = content
     }
+}
+
+// MARK: - Multimodal Request Models
+
+nonisolated struct MultimodalChatRequest: Content, Sendable {
+    let model: String?
+    let messages: [ChatMessage]
+    let maxTokens: Int?
+    let temperature: Double?
+    let topP: Double?
+    let n: Int?
+    let stream: Bool?
+    let stop: [String]?
+    let presencePenalty: Double?
+    let frequencyPenalty: Double?
+    let logitBias: [String: Double]?
+    let user: String?
+    let visionAnalysis: Bool? // Enable vision analysis for images
+
+    enum CodingKeys: String, CodingKey {
+        case model
+        case messages
+        case maxTokens = "max_tokens"
+        case temperature
+        case topP = "top_p"
+        case n
+        case stream
+        case stop
+        case presencePenalty = "presence_penalty"
+        case frequencyPenalty = "frequency_penalty"
+        case logitBias = "logit_bias"
+        case user
+        case visionAnalysis = "vision_analysis"
+    }
+}
+
+// MARK: - Vision Analysis Response Models
+
+nonisolated struct VisionAnalysisResponse: Content, Sendable {
+    let id: String
+    let object: String
+    let created: Int
+    let model: String
+    let analysis: VisionAnalysisResult
+    let processingTime: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case object
+        case created
+        case model
+        case analysis
+        case processingTime = "processing_time"
+    }
+}
+
+nonisolated struct VisionAnalysisResult: Content, Sendable {
+    let textContent: String
+    let objectDetections: [DetectedObjectInfo]
+    let imageDescription: String
+    let confidence: Float
+    let language: String?
+
+    enum CodingKeys: String, CodingKey {
+        case textContent = "text_content"
+        case objectDetections = "object_detections"
+        case imageDescription = "image_description"
+        case confidence
+        case language
+    }
+}
+
+nonisolated struct DetectedObjectInfo: Content, Sendable {
+    let label: String
+    let confidence: Float
+    let boundingBox: BoundingBox
+    let description: String
+
+    enum CodingKeys: String, CodingKey {
+        case label
+        case confidence
+        case boundingBox = "bounding_box"
+        case description
+    }
+}
+
+nonisolated struct BoundingBox: Content, Sendable {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
 }

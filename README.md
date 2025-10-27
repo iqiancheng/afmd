@@ -1,6 +1,6 @@
 # afmd — Apple Foundation Model Daemon Service
 
-A lightweight macOS menu bar service that exposes an OpenAI-compatible API using Apple's on-device Foundation Models. It runs headlessly (no Dock icon), controlled from the menu bar.
+A lightweight macOS menu bar service that exposes an OpenAI-compatible API using Apple's on-device Foundation Models. It runs headlessly (no Dock icon), controlled from the menu bar. Supports text generation, vision analysis (OCR, object detection), and multimodal chat capabilities.
 ![menu bar icon](assets/Screenshot_menubar.jpg)
 ![preferences view](assets/Screenshot_perferences_view.jpg)
 ## Usage
@@ -29,21 +29,27 @@ resp = client.chat.completions.create(
 print(resp.choices[0].message.content)
 ```
 
+📖 **For detailed examples including multimodal chat, vision APIs, and more → [Usage Guide](usage.md)**
+
 ### Endpoints
 
 - `GET /health` — Health check
 - `GET /status` — Model status
 - `GET /v1/models` — List models
 - `POST /v1/chat/completions` — Chat completions (SSE supported with `stream=true`)
+- `POST /v1/chat/completions/multimodal` — Multimodal chat (text + images)
+- `POST /v1/vision/ocr` — Extract text from images
+- `POST /v1/vision/detect` — Detect objects in images
+- `POST /v1/vision/analyze` — Comprehensive image analysis
 
-### Example cURL commands
+### Example cURL
 
 ```bash
 curl -X POST "http://127.0.0.1:11535/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "AFM-on-device",
-    "messages": [{"role": "user", "content": "Hello!"}],
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 

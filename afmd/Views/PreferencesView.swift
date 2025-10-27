@@ -208,6 +208,7 @@ struct GeneralSettingsView: View {
             
             Section("Supported APIs") {
                 VStack(alignment: .leading, spacing: 8) {
+                    // Core OpenAI-compatible APIs
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
@@ -215,6 +216,17 @@ struct GeneralSettingsView: View {
                             .font(.system(.body, design: .monospaced))
                         Spacer()
                         Text("POST /v1/chat/completions")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("Multimodal Chat")
+                            .font(.system(.body, design: .monospaced))
+                        Spacer()
+                        Text("POST /v1/chat/completions/multimodal")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -237,6 +249,43 @@ struct GeneralSettingsView: View {
                             .font(.system(.body, design: .monospaced))
                         Spacer()
                         Text("GET /health")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Divider()
+                        .padding(.vertical, 4)
+                    
+                    // Vision APIs
+                    HStack {
+                        Image(systemName: "eye.circle.fill")
+                            .foregroundStyle(.blue)
+                        Text("OCR (Text Recognition)")
+                            .font(.system(.body, design: .monospaced))
+                        Spacer()
+                        Text("POST /v1/vision/ocr")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack {
+                        Image(systemName: "eye.circle.fill")
+                            .foregroundStyle(.blue)
+                        Text("Object Detection")
+                            .font(.system(.body, design: .monospaced))
+                        Spacer()
+                        Text("POST /v1/vision/detect")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack {
+                        Image(systemName: "eye.circle.fill")
+                            .foregroundStyle(.blue)
+                        Text("Image Analysis")
+                            .font(.system(.body, design: .monospaced))
+                        Spacer()
+                        Text("POST /v1/vision/analyze")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

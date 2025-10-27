@@ -362,7 +362,6 @@ class VaporServerManager: ObservableObject {
                 
                 let response = [
                     "text": ocrResult.text,
-                    "confidence": ocrResult.confidence,
                     "language": ocrResult.language ?? "unknown"
                 ]
                 
@@ -371,7 +370,7 @@ class VaporServerManager: ObservableObject {
                 res.headers.contentType = .json
                 res.body = .init(data: jsonData)
                 
-                self.viewModel?.addLog(level: .info, category: .response, message: "OCR success", details: "Text length: \(ocrResult.text.count), Confidence: \(Int(ocrResult.confidence * 100))%")
+                self.viewModel?.addLog(level: .info, category: .response, message: "OCR success", details: "Text length: \(ocrResult.text.count)")
                 return res
             } catch {
                 self.viewModel?.addLog(level: .error, category: .response, message: "OCR error", details: "Error: \(error.localizedDescription)")
@@ -396,7 +395,6 @@ class VaporServerManager: ObservableObject {
                     "objects": objects.map { obj in
                         [
                             "label": obj.label,
-                            "confidence": obj.confidence,
                             "description": obj.description
                         ]
                     }
@@ -431,7 +429,6 @@ class VaporServerManager: ObservableObject {
                 let detectedObjects = analysis.objectDetections.map { obj in
                     DetectedObjectInfo(
                         label: obj.label,
-                        confidence: obj.confidence,
                         boundingBox: BoundingBox(
                             x: Double(obj.boundingBox.origin.x),
                             y: Double(obj.boundingBox.origin.y),
@@ -446,7 +443,6 @@ class VaporServerManager: ObservableObject {
                     textContent: analysis.textContent,
                     objectDetections: detectedObjects,
                     imageDescription: analysis.imageDescription,
-                    confidence: analysis.confidence,
                     language: visionManager.detectLanguageInText(analysis.textContent)
                 )
                 
@@ -464,7 +460,7 @@ class VaporServerManager: ObservableObject {
                 res.headers.contentType = .json
                 res.body = .init(data: jsonData)
                 
-                self.viewModel?.addLog(level: .info, category: .response, message: "Image analysis success", details: "Text: \(analysis.textContent.count) chars, Objects: \(detectedObjects.count), Confidence: \(Int(analysis.confidence * 100))%")
+                self.viewModel?.addLog(level: .info, category: .response, message: "Image analysis success", details: "Text: \(analysis.textContent.count) chars, Objects: \(detectedObjects.count)")
                 return res
             } catch {
                 self.viewModel?.addLog(level: .error, category: .response, message: "Image analysis error", details: "Error: \(error.localizedDescription)")

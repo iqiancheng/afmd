@@ -8,7 +8,6 @@ import Vapor
 @Generable
 nonisolated struct AIResponse: Sendable {
     let answer: String
-    let confidence: String
 }
 
 // MARK: - Request Models
@@ -338,27 +337,23 @@ nonisolated struct VisionAnalysisResult: Content, Sendable {
     let textContent: String
     let objectDetections: [DetectedObjectInfo]
     let imageDescription: String
-    let confidence: Float
     let language: String?
 
     enum CodingKeys: String, CodingKey {
         case textContent = "text_content"
         case objectDetections = "object_detections"
         case imageDescription = "image_description"
-        case confidence
         case language
     }
 }
 
 nonisolated struct DetectedObjectInfo: Content, Sendable {
     let label: String
-    let confidence: Float
     let boundingBox: BoundingBox
     let description: String
 
     enum CodingKeys: String, CodingKey {
         case label
-        case confidence
         case boundingBox = "bounding_box"
         case description
     }

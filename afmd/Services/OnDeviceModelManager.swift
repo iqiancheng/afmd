@@ -305,12 +305,7 @@ actor OnDeviceModelManager {
                     enableVisionAnalysis: enableVisionAnalysis
                 )
                 
-                print("DEBUG: Processed multimodal content: \(processedContent.prefix(200))...")
-                
-                // Check language of processed content
-                if let detectedLang = detectLanguage(from: processedContent) {
-                    print("DEBUG: Processed content language: \(detectedLang)")
-                }
+                print("DEBUG: Processed multimodal content: \(processedContent.prefix(100))...")
                 
                 // Create new message with processed content
                 let processedMessage = ChatMessage(
@@ -336,19 +331,14 @@ actor OnDeviceModelManager {
         var processedParts: [String] = []
         
         for contentItem in content {
-            print("DEBUG: Processing content type: \(contentItem.type)")
-            
             switch contentItem.type {
             case "text":
                 if let text = contentItem.text {
-                    print("DEBUG: Processing text: \(text.prefix(50))...")
                     processedParts.append(text)
                 }
                 
             case "image_url":
                 if let imageUrl = contentItem.imageUrl {
-                    print("DEBUG: Processing image URL: \(imageUrl.url.prefix(100))...")
-                    
                     // Check if it's a data URL (base64 encoded image)
                     if imageUrl.url.hasPrefix("data:image/") {
                         // Extract base64 data from data URL
@@ -370,7 +360,6 @@ actor OnDeviceModelManager {
                 
             case "image_data":
                 if let imageData = contentItem.imageData {
-                    print("DEBUG: Processing image data: format=\(imageData.format), size=\(imageData.data.count) chars")
                     // Process base64 image data
                     let imageAnalysis = try await processImageData(imageData, enableVisionAnalysis: enableVisionAnalysis)
                     processedParts.append(imageAnalysis)
@@ -412,22 +401,11 @@ actor OnDeviceModelManager {
             let visionManager = VisionServiceManager.shared
             let analysis = try await visionManager.analyzeImage(image)
             
-            // Create a more detailed and contextual description
-            var description = "User uploaded an image with the following analysis:\n\n"
-            
             if !analysis.textContent.isEmpty {
-                description += "📝 Text content found: \"\(analysis.textContent)\"\n\n"
+                return "(analysis.textContent)\n\n\(analysis.imageDescription) \n\n"
+            } else {
+                return "User uploaded an image (no text content detected)."
             }
-            
-            if !analysis.objectDetections.isEmpty {
-                let objectLabels = analysis.objectDetections.map { "\($0.label) (\(Int($0.confidence * 100))%)" }
-                description += "🔍 Objects detected: \(objectLabels.joined(separator: ", "))\n\n"
-            }
-            
-            description += "📊 Overall analysis confidence: \(Int(analysis.confidence * 100))%\n\n"
-            description += "Please analyze this image and respond to the user's question about it."
-            
-            return description
         } else {
             // Simple image reference
             return "[Image: \(imageData.format.uppercased()) format, \(data.count) bytes]"

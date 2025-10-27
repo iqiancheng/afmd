@@ -310,7 +310,7 @@ class VisionServiceManager: ObservableObject {
             let objectLabels = detectedObjects.map { $0.label }
             description += "Objects detected: \(objectLabels.joined(separator: ", ")). "
         }
-        description += "Analysis confidence: \(Int(textResult.confidence * 100))%."
+        description
         
         return ImageAnalysisResult(
             textContent: textResult.text,

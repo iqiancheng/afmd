@@ -215,11 +215,15 @@ actor OnDeviceModelManager {
         )
 
         do {
-            // Create generation options if temperature is specified
+            // Create generation options with validation
             var options = GenerationOptions()
-            if let temp = temperature {
-                options = GenerationOptions(temperature: temp, maximumResponseTokens: maxTokens)
-            } else if let maxTokens = maxTokens {
+            if let temp = temperature, temp.isFinite && temp >= 0.0 && temp <= 2.0 {
+                if let maxTokens = maxTokens, maxTokens > 0 {
+                    options = GenerationOptions(temperature: temp, maximumResponseTokens: maxTokens)
+                } else {
+                    options = GenerationOptions(temperature: temp)
+                }
+            } else if let maxTokens = maxTokens, maxTokens > 0 {
                 options = GenerationOptions(maximumResponseTokens: maxTokens)
             }
 

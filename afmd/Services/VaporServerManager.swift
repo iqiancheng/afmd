@@ -572,12 +572,15 @@ class VaporServerManager: ObservableObject {
                         transcript: transcript
                     )
 
-                    // Create generation options
+                    // Create generation options with validation
                     var options = GenerationOptions()
-                    if let temp = chatRequest.temperature {
-                        options = GenerationOptions(
-                            temperature: temp, maximumResponseTokens: chatRequest.maxTokens)
-                    } else if let maxTokens = chatRequest.maxTokens {
+                    if let temp = chatRequest.temperature, temp.isFinite && temp >= 0.0 && temp <= 2.0 {
+                        if let maxTokens = chatRequest.maxTokens, maxTokens > 0 {
+                            options = GenerationOptions(temperature: temp, maximumResponseTokens: maxTokens)
+                        } else {
+                            options = GenerationOptions(temperature: temp)
+                        }
+                    } else if let maxTokens = chatRequest.maxTokens, maxTokens > 0 {
                         options = GenerationOptions(maximumResponseTokens: maxTokens)
                     }
 
@@ -763,14 +766,15 @@ class VaporServerManager: ObservableObject {
                         transcript: transcript
                     )
 
-                    // Create generation options
+                    // Create generation options with validation
                     var options = GenerationOptions()
-                    if let temp = chatRequest.temperature {
-                        options = GenerationOptions(
-                            temperature: temp, 
-                            maximumResponseTokens: chatRequest.maxTokens
-                        )
-                    } else if let maxTokens = chatRequest.maxTokens {
+                    if let temp = chatRequest.temperature, temp.isFinite && temp >= 0.0 && temp <= 2.0 {
+                        if let maxTokens = chatRequest.maxTokens, maxTokens > 0 {
+                            options = GenerationOptions(temperature: temp, maximumResponseTokens: maxTokens)
+                        } else {
+                            options = GenerationOptions(temperature: temp)
+                        }
+                    } else if let maxTokens = chatRequest.maxTokens, maxTokens > 0 {
                         options = GenerationOptions(maximumResponseTokens: maxTokens)
                     }
 

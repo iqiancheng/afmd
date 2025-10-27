@@ -93,7 +93,19 @@ actor OnDeviceModelManager {
     /// Check if a language is supported by the model
     func isLanguageSupported(_ languageCode: String) -> Bool {
         let supportedCodes = getSupportedLanguageCodes()
-        return supportedCodes.contains(languageCode)
+        
+        // Check exact match first
+        if supportedCodes.contains(languageCode) {
+            return true
+        }
+        
+        // Check if the base language (without script) is supported
+        // e.g., "zh-Hans" should match "zh"
+        if let baseLanguage = languageCode.components(separatedBy: "-").first {
+            return supportedCodes.contains(baseLanguage)
+        }
+        
+        return false
     }
     
     /// Validate text language before processing

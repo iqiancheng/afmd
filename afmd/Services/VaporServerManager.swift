@@ -11,6 +11,20 @@ import FoundationModels
 import Vapor
 import NIOFoundationCompat
 
+// MARK: - CORS Middleware
+
+class CORSMiddleware: Middleware {
+    func respond(to request: Request, chainingTo next: Responder) -> EventLoopFuture<Response> {
+        let response = next.respond(to: request)
+        return response.map { res in
+            res.headers.replaceOrAdd(name: "Access-Control-Allow-Origin", value: "*")
+            res.headers.replaceOrAdd(name: "Access-Control-Allow-Headers", value: "Content-Type, Authorization")
+            res.headers.replaceOrAdd(name: "Access-Control-Allow-Methods", value: "POST, GET, OPTIONS")
+            return res
+        }
+    }
+}
+
 @MainActor
 class VaporServerManager: ObservableObject {
     @Published var isRunning = false
@@ -50,6 +64,9 @@ class VaporServerManager: ObservableObject {
 
             // Configure request body size limit for image uploads
             app.routes.defaultMaxBodySize = "50mb"
+            
+            // Add CORS middleware
+            app.middleware.use(CORSMiddleware())
             
             // Configure routes
             configureRoutes(app)
@@ -103,6 +120,11 @@ class VaporServerManager: ObservableObject {
         app.get("health") { req async -> HTTPStatus in
             let status = HTTPStatus.ok
             return status
+        }
+        
+        // OPTIONS handler for CORS preflight requests
+        app.on(.OPTIONS, "**") { req async -> HTTPStatus in
+            return .ok
         }
 
         // Model status endpoint
@@ -223,6 +245,10 @@ class VaporServerManager: ObservableObject {
                 let jsonData = try JSONEncoder().encode(chatResponse)
                 var res = Response()
                 res.headers.contentType = .json
+                // Add CORS headers for userscript compatibility
+                res.headers.replaceOrAdd(name: "Access-Control-Allow-Origin", value: "*")
+                res.headers.replaceOrAdd(name: "Access-Control-Allow-Headers", value: "Content-Type, Authorization")
+                res.headers.replaceOrAdd(name: "Access-Control-Allow-Methods", value: "POST, GET, OPTIONS")
                 res.body = .init(data: jsonData)
                 
                 self.viewModel?.addLog(level: .info, category: .response, message: "", details: response + "\n\nlength: \(response.count) characters, Status: 200")

@@ -134,14 +134,23 @@ final class ServerViewModel: ObservableObject {
         // Verify Apple Intelligence availability at startup
         Task { await checkModelAvailability() }
         
-        // Check auto-start status
+        // Check auto-start status and enable it by default if not already enabled
         checkAutoStartStatus()
+        if !isAutoStartEnabled {
+            enableAutoStart()
+        }
         
         // Check if running in daemon mode
         checkDaemonMode()
         
-        // Load daemon mode preference
-        loadDaemonModePreference()
+        // Set daemon mode preference to true by default
+        // The daemon mode is automatically enabled via LaunchAgent plist environment variable
+        if !UserDefaults.standard.bool(forKey: "AFMD_DaemonMode") {
+            isDaemonMode = true
+            saveDaemonModePreference()
+        } else {
+            loadDaemonModePreference()
+        }
         
         // Load chat history
         loadChatHistory()

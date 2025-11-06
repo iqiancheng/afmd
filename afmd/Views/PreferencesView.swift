@@ -192,20 +192,6 @@ struct GeneralSettingsView: View {
                 }
             }
             
-            Section("Startup & Background") {
-                Toggle("Auto-start on Login", isOn: Binding(
-                    get: { viewModel.isAutoStartEnabled },
-                    set: { _ in viewModel.toggleAutoStart() }
-                ))
-                .help("Start afmd automatically when you log in")
-                
-                Toggle("Daemon Mode", isOn: Binding(
-                    get: { viewModel.isDaemonMode },
-                    set: { _ in viewModel.toggleDaemonMode() }
-                ))
-                .help("Run as background daemon (requires restart)")
-            }
-            
             Section("Supported APIs") {
                 VStack(alignment: .leading, spacing: 8) {
                     // Core OpenAI-compatible APIs

@@ -50,27 +50,14 @@ struct PreferencesView: View {
             .navigationTitle(selectedTab.rawValue)
         }
         .frame(width: 800, height: 600)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    dismiss()
-                }
-            }
-            
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done") {
-                    viewModel.saveConfiguration()
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
-            }
-        }
+
     }
 }
 
 // MARK: - General Settings
 struct GeneralSettingsView: View {
     @ObservedObject var viewModel: ServerViewModel
+    @State private var saveTask: Task<Void, Never>?
     
     var body: some View {
         Form {
@@ -189,6 +176,15 @@ struct GeneralSettingsView: View {
                     ), format: .number.grouping(.never))
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 100)
+                    .onChange(of: viewModel.configuration.port) { _, _ in
+                        saveTask?.cancel()
+                        saveTask = Task {
+                            try? await Task.sleep(nanoseconds: 1_000_000_000)
+                            if !Task.isCancelled {
+                                viewModel.saveConfiguration()
+                            }
+                        }
+                    }
                 }
             }
             
